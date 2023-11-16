@@ -4,6 +4,7 @@ import threading
 HOST = '127.0.0.1'
 PORT = 1883
 
+
 def receive_messages(client_socket):
     while True:
         try:
@@ -14,6 +15,7 @@ def receive_messages(client_socket):
         except ConnectionResetError:
             print("Connection closed by server.")
             break
+
 
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,6 +29,8 @@ def main():
         if user_input.lower() == 'exit':
             break
         client.send(user_input.encode('utf-8'))
+
+
 
 if __name__ == "__main__":
     main()
