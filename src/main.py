@@ -51,10 +51,15 @@ class MQTTBroker:
         self.version = 0x04
         self.clients = {}
 
-    def handle_message(self,message):
+    def handle_message(self,message, client_socket):
         if (message[0] >> 4) == CONNECT:
             connect = CONNECT_packet(message)
             connect.extract_info()
+            if connect.id in self.clients:
+                client_socket.close()
+            else:
+                self.clients[connect.id] = {'subscriptions': []}
+            print(self.clients)
             # TODO
             # Now with the information of the CONNECT Packet extracted
             # we can go forward with broker actions
@@ -75,14 +80,19 @@ class MQTTBroker:
 
     def handle_client(self,client_socket):
         while True:
-            message = client_socket.recv(65535)
+            message = client_socket.recv(65535) #iso/osi
             if not message :
                 break
-            self.handle_message(message)
+            self.handle_message(message, client_socket) #
             #print(f"Received from client: {message}")
             ack_message = "Network Connection established!"
             client_socket.send(ack_message.encode('utf-8'))
         client_socket.close()
+
+    def read_var_field(self,buf, idx):
+        n = int.from_bytes(buf[idx:idx+2], "big", signed=False)
+        return idx+n, buf[idx+2:idx+2+n]
+        # idx, data = read_var_field(buf, idx)
 
 
 

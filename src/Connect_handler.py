@@ -68,7 +68,7 @@ class CONNECT_packet():
         self.will_topic_len = None
         self.will_topic = b''
         self.will_message_len = None
-        self.will_message = None
+        self.will_message = b''
         self.username_len = None
         self.username = b''
         self.password_len = None
@@ -76,19 +76,25 @@ class CONNECT_packet():
 
     def extract_info(self):
         message = self.message
-        self.type = message[0] >> 4
-        self.len = message[1]
-        self.name_len = int(bytearray([message[2], message[3]]).hex())
+        self.type = message[self.index] >> 4
+        self.index += 1
 
-        for i in range(4,self.name_len + 4):
+        self.len = self.variable_byte_integer(self.index)
+
+        self.name_len = int(bytearray([message[self.index], message[self.index + 1]]).hex())
+        self.index += 2
+
+        for i in range(self.index,self.name_len + self.index):
             self.name += bytes([message[i]])
         self.name = self.name.decode('utf-8')
-        self.index = self.name_len + 4
+        self.index = self.name_len + self.index
 
         self.version = message[self.index]
+        self.index += 1
 
-        self.flags = message[self.index + 1]
+        self.flags = message[self.index]
         self.get_flags()
+        self.index += 1
 
         self.__get_keep_alive(self.index)
 
@@ -102,12 +108,22 @@ class CONNECT_packet():
 
         self.print_all()
 
+    def variable_byte_integer(self,i):
+        ret = b''
+        while self.message[i] >> 7 == 1:
+            ret += bytes([self.message[i]])
+            i += 1
+        ret += bytes([self.message[i]])
+        ret, index = decode_variable_byte_integer(ret)
+        self.index += index
+        return ret
+
     def __get_keep_alive(self,index):
-        if self.message[index + 2] != 0:
-            self.keep_alive = int(bytearray([self.message[index + 2], self.message[index + 3]]).hex())
+        if self.message[index] != 0:
+            self.keep_alive = int(bytearray([self.message[index], self.message[index + 1]]).hex())
         else:
-            self.keep_alive = self.message[index + 3]
-        self.index = index + 4
+            self.keep_alive = self.message[index + 1]
+        self.index = index + 2
 
     def __get_id(self,index):
         if self.message[index] != 0:
@@ -124,7 +140,7 @@ class CONNECT_packet():
     def __get_will(self,index):
         if self.will_flag == 1:
             if self.message[index] != 0:
-                self.will_topic_len = int(bytearray([self.message[index], self.message[index + 1]]).hex())
+                self.will_topic_len = int.from_bytes(bytes([self.message[index]]) + bytes([self.message[index + 1]]), "big")
             else:
                 self.will_topic_len = self.message[index + 1]
             index = index + 2
