@@ -1,6 +1,7 @@
 import socket
 import threading
 from Connect_handler import CONNECT_packet
+import Fixed_header
 
 
 # Control packet type
@@ -55,6 +56,7 @@ class MQTTBroker:
         if (message[0] >> 4) == CONNECT:
             connect = CONNECT_packet(message)
             connect.extract_info()
+            connect.print_all()
             if connect.id in self.clients:
                 client_socket.close()
             else:
@@ -88,13 +90,6 @@ class MQTTBroker:
             ack_message = "Network Connection established!"
             client_socket.send(ack_message.encode('utf-8'))
         client_socket.close()
-
-    def read_var_field(self,buf, idx):
-        n = int.from_bytes(buf[idx:idx+2], "big", signed=False)
-        return idx+n, buf[idx+2:idx+2+n]
-        # idx, data = read_var_field(buf, idx)
-
-
 
 if __name__ == '__main__':
     host = socket.gethostbyname(socket.gethostname())
