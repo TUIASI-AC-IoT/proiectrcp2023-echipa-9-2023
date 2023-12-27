@@ -1,5 +1,7 @@
+from defines import *
+
 class Fixed_header():
-    def __init__(self, message):
+    def __init__(self, message = 0):
         self.message = message
         self.index = 0
         self.pack_type = None
@@ -25,7 +27,7 @@ class Fixed_header():
               f'Pack Flags : {self.pack_flags}\n'
               f'Remaining Length : {self.remaining_len}')
 
-    def decode_variable_byte_integer(self,encoded_bytes):
+    def decode_variable_byte_integer(self, encoded_bytes):
         multiplier = 1
         value = 0
         index = 0
@@ -45,3 +47,20 @@ class Fixed_header():
                 break
 
         return value, index
+
+    def encode_variable_byte_integer(self, value):
+        encoded_bytes = bytearray(0)
+
+        while True:
+            encoded_byte = int(value % 128)
+            value = int(value / 128)
+            if value > 0:
+                encoded_byte = encoded_byte | 0x80
+            encoded_bytes.append(encoded_byte)
+
+            if value == 0:
+                break
+        return encoded_bytes
+
+
+

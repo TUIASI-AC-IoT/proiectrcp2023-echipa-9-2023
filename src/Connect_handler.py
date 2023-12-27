@@ -1,4 +1,4 @@
-from Fixed_header import Fixed_header
+from Fixed_header import *
 
 class CONNECT_packet(Fixed_header):
     def __init__(self, message):
@@ -17,6 +17,8 @@ class CONNECT_packet(Fixed_header):
         self.reserved = None
 
         self.keep_alive = None
+        self.prop_len = 0
+        self.properties = b''
         self.id_len = None
         self.id = b''
         self.will_prop_len = None
@@ -30,6 +32,14 @@ class CONNECT_packet(Fixed_header):
         self.password_len = None
         self.password = b''
 
+        self.expiry_interval = None
+        self.recv_max = None
+        self.max_pack_size = None
+        self.topic_alias = None
+        self.request_response = False
+        self.request_problem = False
+        self.user_property = {}
+
     def extract_info(self):
         message = self.message
         self.read_fixed_field()
@@ -41,17 +51,18 @@ class CONNECT_packet(Fixed_header):
         if self.id_len != 0:
             self.id = self.message[self.index:self.index+self.id_len].decode('utf-8')
             self.index += self.id_len
-        self.index = self.read_will_properties(self.index)
 
-        self.will_topic_len, self.index = self.get_len_field(self.index)
-        if self.will_topic_len != 0:
-            self.will_topic = self.message[self.index:self.index+self.will_topic_len].decode('utf-8')
-            self.index += self.will_topic_len
+        if self.will_flag != 0:
+            self.index = self.read_will_properties(self.index)
+            self.will_topic_len, self.index = self.get_len_field(self.index)
+            if self.will_topic_len != 0:
+                self.will_topic = self.message[self.index:self.index+self.will_topic_len].decode('utf-8')
+                self.index += self.will_topic_len
 
-        self.will_message_len, self.index = self.get_len_field(self.index)
-        if self.will_message_len != 0:
-            self.will_message = self.message[self.index:self.index+self.will_message_len].decode('utf-8')
-            self.index += self.will_message_len
+            self.will_message_len, self.index = self.get_len_field(self.index)
+            if self.will_message_len != 0:
+                self.will_message = self.message[self.index:self.index+self.will_message_len].decode('utf-8')
+                self.index += self.will_message_len
 
         self.username_len, self.index = self.get_len_field(self.index)
         if self.username_len != 0:
@@ -68,7 +79,7 @@ class CONNECT_packet(Fixed_header):
             print("Will properties field is NULL")
             return index + 1
         else:
-            # nu am vazut pachete cu will properties > 0
+            #TODO
             pass
 
     def read_var_field(self):
@@ -78,14 +89,55 @@ class CONNECT_packet(Fixed_header):
         self.index = self.__get_keep_alive(self.index)
         self.index = self.__get_properties(self.index)
 
-
     def __get_properties(self,index):
         if self.message[index] == 0:
             print("Properties field is NULL")
             return index + 1
         else :
-            # nu am vazut pachete cu properties
-            pass
+            self.prop_len = self.message[index]
+            for i in range(index + 1,index + self.prop_len):
+                self.properties += bytes([self.message[i]])
+            self.__extract_property()
+            return index + self.prop_len + 1
+
+    def __extract_property(self):
+        cnt = 0
+        idx = 0
+        for id in self.properties:
+            idx += 1
+            if id == SESSION_EXPIRY_INTERVAL:
+                self.expiry_interval = int.from_bytes(self.properties[idx:idx + 4], "big",
+                                                      signed=False)
+                print(f'expiry : {self.expiry_interval}')
+            elif id == RECEIVE_MAXIMUM:
+                self.recv_max = int.from_bytes(self.properties[idx:idx + 2], "big",
+                                                      signed=False)
+                print(f'recv max : {self.recv_max}')
+            elif id == MAXIMUM_PACKET_SIZE:
+                self.max_pack_size = int.from_bytes(self.properties[idx:idx + 4], "big",
+                                               signed=False)
+                print(f'max pack size : {self.max_pack_size}')
+            elif id == TOPIC_ALIAS_MAXIMUM:
+                self.topic_alias = int.from_bytes(self.properties[idx:idx + 2], "big",
+                                                    signed=False)
+                print(f'topic alias : {self.topic_alias}')
+            elif id == REQUEST_RESPONSE_INFORMATION:
+                self.request_response = self.properties[idx]
+                print(f'request response : {self.request_response}')
+            elif id == REQUEST_PROBLEM_INFORMATION:
+                self.max_pack_size = self.properties[idx]
+                print(f'request problem : {self.max_pack_size}')
+            elif id == USER_PROPERTY:
+                key, val = self.__get_user(idx)
+                self.user_property[key] = val
+                pass
+
+    def __get_user(self,idx):
+        key_len = int.from_bytes(self.properties[idx:idx + 2], "big", signed=False)
+        key = self.properties[idx + 2:idx + key_len + 2].decode('utf-8')
+        val_len = int.from_bytes(self.properties[idx + key_len + 2:idx + key_len + 4], "big", signed=False)
+        val = 20 #TODO
+        return key, val
 
     def __get_name(self, index):
         self.name_len = int.from_bytes(self.message[index:index + 2], "big", signed=False)
@@ -113,7 +165,7 @@ class CONNECT_packet(Fixed_header):
         return index + 1
 
     def get_len_field(self,index):
-        len = int.from_bytes(self.message[self.index:self.index + 2], "big", signed=False)
+        len = int.from_bytes(self.message[index:index + 2], "big", signed=False)
         return len, index + 2
 
     def print_all(self):
@@ -150,46 +202,3 @@ class CONNECT_packet(Fixed_header):
 
 
 
-
-def get_bits(byte):
-    bits = format(byte, 'b')
-    while len(bits) < 8:
-        bits = '0' + bits
-    return bits
-
-
-def decode_variable_byte_integer(encoded_bytes):
-    multiplier = 1
-    value = 0
-    index = 0
-
-    while True:
-        encoded_byte = encoded_bytes[index]
-        decoded_value = encoded_byte & 0x7F
-        value += decoded_value * multiplier
-
-        if multiplier > 128 * 128 * 128:
-            raise ValueError("Malformed Variable Byte Integer")
-
-        multiplier *= 128
-        index += 1
-
-        if not (encoded_byte & 0x80):
-            break
-
-    return value, index
-
-
-def encode_variable_byte_integer(value):
-    encoded_bytes = bytearray(0)
-
-    while True:
-        encoded_byte = int(value % 128)
-        value = int(value / 128)
-        if value > 0:
-            encoded_byte = encoded_byte | 0x80
-        encoded_bytes.append(encoded_byte)
-
-        if value == 0:
-            break
-    return encoded_bytes

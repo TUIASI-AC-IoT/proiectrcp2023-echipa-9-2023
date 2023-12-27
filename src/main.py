@@ -1,26 +1,8 @@
 import socket
 import threading
 from Connect_handler import CONNECT_packet
-import Fixed_header
-
-
-# Control packet type
-CONNECT     = 0x1
-CONNACK     = 0x2
-PUBLISH     = 0x3
-PUBACK      = 0x4
-PUBREC      = 0x5
-PUBREL      = 0x6
-PUBCOMP     = 0x7
-SUBSCRIBE   = 0x8
-SUBACK      = 0x9
-UNSUBSCRIBE = 0xA
-UNSUBACK    = 0xB
-PINGREQ     = 0xC
-PINGRESP    = 0xD
-DISCONNECT  = 0xE
-AUTH        = 0xF
-
+from Connack_handler import CONNACK_builder
+from Fixed_header import *
 
 # Connect packet example
 # x10\x0C\x00\x04\x4d\x51\x54\x54\x04\x02\x00\x3C\x00\x00...
@@ -53,21 +35,20 @@ class MQTTBroker:
         self.clients = {}
 
     def handle_message(self,message, client_socket):
-        if (message[0] >> 4) == CONNECT:
+        connack_builder = CONNACK_builder(return_code=0)
+        if (message[0]) == CONNECT:
             connect = CONNECT_packet(message)
             connect.extract_info()
             connect.print_all()
+            if 1: # daca pachetul connect e in regula TODO
+                connack_packet = connack_builder.build()
+                client_socket.send(connack_packet)
             if connect.id in self.clients:
                 client_socket.close()
             else:
                 self.clients[connect.id] = {'subscriptions': []}
             print(self.clients)
             # TODO
-            # Now with the information of the CONNECT Packet extracted
-            # we can go forward with broker actions
-
-
-
 
     def start(self):
         self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
