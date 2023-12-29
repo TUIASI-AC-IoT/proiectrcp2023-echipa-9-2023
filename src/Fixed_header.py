@@ -1,7 +1,7 @@
 from defines import *
 
 class Fixed_header():
-    def __init__(self, message = 0):
+    def __init__(self, message = b''):
         self.message = message
         self.index = 0
         self.pack_type = None

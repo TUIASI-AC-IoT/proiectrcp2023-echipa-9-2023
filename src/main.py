@@ -2,6 +2,9 @@ import socket
 import threading
 from Connect_handler import CONNECT_packet
 from Connack_handler import CONNACK_builder
+from Subscribe_handler import  SUBSCRIBE_packet
+from Suback_handler import SUBACK_builder
+from Unsubscribe_handler import UNSUBSCRIBE_packet
 from Fixed_header import *
 
 # Connect packet example
@@ -25,52 +28,75 @@ def get_bits(byte):
     return bits
 
 
+# noinspection PyUnboundLocalVariable
 class MQTTBroker:
     def __init__(self,host = 'localhost', port = 1883):
         self.host = host
         self.port = port
-        self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.name = b'MQTT'
         self.version = 0x04
         self.clients = {}
 
     def handle_message(self,message, client_socket):
-        connack_builder = CONNACK_builder(return_code=0)
-        if (message[0]) == CONNECT:
+        if message[0] == CONNECT:
             connect = CONNECT_packet(message)
-            connect.extract_info()
-            connect.print_all()
-            if 1: # daca pachetul connect e in regula TODO
-                connack_packet = connack_builder.build()
-                client_socket.send(connack_packet)
-            if connect.id in self.clients:
+            self.send_connack(connect, client_socket)
+            if connect.payload['id'] in self.clients:
                 client_socket.close()
             else:
-                self.clients[connect.id] = {'subscriptions': []}
-            print(self.clients)
+                self.clients[connect.payload['id']] = {'subscriptions': []}
+        if message[0] >> 4 == SUBSCRIBE >> 4:
+            subscribe = SUBSCRIBE_packet(message)
+            self.add_subscription_to_id(subscribe, connect.payload['id'])
+            self.send_suback(subscribe, client_socket)
+        if message[0] >> 4 == UNSUBSCRIBE >> 4:
+            unsubscribe = UNSUBSCRIBE_packet(message)
+            self.delete_subscription_to_id(unsubscribe, connect.payload['id'])
+
+
             # TODO
 
     def start(self):
-        self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-        self.socket.bind((self.host, self.port))
-        self.socket.listen(30)
-        print(f"MQTT Broker listening on {self.host}:{self.port}")
-
         while True:
-            client_socket, client_address = self.socket.accept()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((self.host, self.port))
+            sock.listen(30)
+            print(f"MQTT Broker listening on {self.host}:{self.port}")
+
+            client_socket, client_address = sock.accept()
             client_thread = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_thread.start()
 
+
     def handle_client(self,client_socket):
         while True:
-            message = client_socket.recv(65535) #iso/osi
-            if not message :
+            try:
+                message = client_socket.recv(65535) #iso/osi
+            except:
+                print("Something went wrong\n")
+                break
+            if not message or message[1] != len(message) - 2:
                 break
             self.handle_message(message, client_socket) #
-            #print(f"Received from client: {message}")
-            ack_message = "Network Connection established!"
-            client_socket.send(ack_message.encode('utf-8'))
         client_socket.close()
+
+    def send_connack(self,connect,client_socket):
+        connack_builder = CONNACK_builder(connect.variable_header)
+        connack_packet = connack_builder.build()
+        client_socket.send(connack_packet)
+
+    def send_suback(self,subscribe,client_socket):
+        suback_builder = SUBACK_builder(subscribe)
+        suback_packet = suback_builder.build()
+        client_socket.send(suback_packet)
+
+    def add_subscription_to_id(self,subscribe, id):
+        self.clients[id]['subscriptions'].append(subscribe.topics[-1]['name'])
+        print(self.clients)
+
+    def delete_subscription_to_id(self, subscribe, id):
+        print(self.clients[id])
 
 if __name__ == '__main__':
     host = socket.gethostbyname(socket.gethostname())

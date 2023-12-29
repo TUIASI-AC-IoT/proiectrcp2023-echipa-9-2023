@@ -3,84 +3,101 @@ from Fixed_header import *
 class CONNECT_packet(Fixed_header):
     def __init__(self, message):
         Fixed_header.__init__(self, message)
-        self.name_len = None
-        self.name = b''
-        self.version = None
-
-        self.flags = None
-        self.username_flag = None
-        self.password_flag = None
-        self.will_retain = None
-        self.qos_level = None
-        self.will_flag = None
-        self.clean_session = None
-        self.reserved = None
-
-        self.keep_alive = None
-        self.prop_len = 0
-        self.properties = b''
-        self.id_len = None
-        self.id = b''
-        self.will_prop_len = None
-        self.will_prop = None
-        self.will_topic_len = None
-        self.will_topic = b''
-        self.will_message_len = None
-        self.will_message = b''
-        self.username_len = None
-        self.username = b''
-        self.password_len = None
-        self.password = b''
-
-        self.expiry_interval = None
-        self.recv_max = None
-        self.max_pack_size = None
-        self.topic_alias = None
-        self.request_response = False
-        self.request_problem = False
+        self.variable_header = {
+            'name_len': None,
+            'name': b'',
+            'version': None,
+            'username_flag': None,
+            'password_flag': None,
+            'will_retain': None,
+            'qos_level': None,
+            'will_flag': None,
+            'clean_session': None,
+            'reserved': None,
+            'keep_alive': None,
+            'prop_len': 0,
+            'properties': b'',
+            'expiry_interval': None,
+            'recv_max': None,
+            'max_pack_size': None,
+            'topic_alias': None,
+            'request_response': False,
+            'request_problem': False
+        }
         self.user_property = {}
+        self.payload = {
+            'id_len': None,
+            'id': b'',
+            'will_prop_len': None,
+            'will_prop': b'',
+            'will_topic_len': 0,
+            'will_topic': b'',
+            'will_message_len': None,
+            'will_message': b'',
+            'username_len': None,
+            'username': b'',
+            'password_len': None,
+            'password': b''
+        }
+        self.extract_info()
 
     def extract_info(self):
-        message = self.message
         self.read_fixed_field()
         self.read_var_field()
         self.read_payload_field()
 
     def read_payload_field(self):
-        self.id_len,self.index = self.get_len_field(self.index)
-        if self.id_len != 0:
-            self.id = self.message[self.index:self.index+self.id_len].decode('utf-8')
-            self.index += self.id_len
+        id_len,self.index = self.get_len_field(self.index)
+        if id_len != 0:
+            id = self.message[self.index:self.index + id_len].decode('utf-8')
+            self.index += id_len
+            self.payload['id_len'] = id_len
+            self.payload['id'] = id
 
-        if self.will_flag != 0:
+        if self.variable_header['will_flag'] != 0:
             self.index = self.read_will_properties(self.index)
-            self.will_topic_len, self.index = self.get_len_field(self.index)
-            if self.will_topic_len != 0:
-                self.will_topic = self.message[self.index:self.index+self.will_topic_len].decode('utf-8')
-                self.index += self.will_topic_len
+            will_topic_len, self.index = self.get_len_field(self.index)
+            if will_topic_len != 0:
+                will_topic = self.message[self.index:self.index+will_topic_len].decode('utf-8')
+                self.index += will_topic_len
+                self.payload['will_topic_len'] = will_topic_len
+                self.payload['will_topic'] = will_topic
 
-            self.will_message_len, self.index = self.get_len_field(self.index)
-            if self.will_message_len != 0:
-                self.will_message = self.message[self.index:self.index+self.will_message_len].decode('utf-8')
-                self.index += self.will_message_len
+            will_message_len, self.index = self.get_len_field(self.index)
+            if will_message_len != 0:
+                will_message = self.message[self.index:self.index+will_message_len].decode('utf-8')
+                self.index += will_message_len
+                self.payload['will_message_len'] = will_message_len
+                self.payload['will_mesage'] = will_message
 
-        self.username_len, self.index = self.get_len_field(self.index)
-        if self.username_len != 0:
-            self.username = self.message[self.index:self.index+self.username_len].decode('utf-8')
-            self.index += self.username_len
+        username_len, self.index = self.get_len_field(self.index)
+        if username_len != 0:
+            username = self.message[self.index:self.index+username_len].decode('utf-8')
+            self.index += username_len
+            self.payload['username_len'] = username_len
+            self.payload['username'] = username
 
-        self.password_len, self.index = self.get_len_field(self.index)
-        if self.password_len != 0:
-            self.password = self.message[self.index:self.index + self.password_len].decode('utf-8')
-            self.index += self.password_len
+        password_len, self.index = self.get_len_field(self.index)
+        if password_len != 0:
+            password = self.message[self.index:self.index + password_len].decode('utf-8')
+            self.index += password_len
+            self.payload['password_len'] = password_len
+            self.payload['password'] = password
 
     def read_will_properties(self,index):
         if self.message[index] == 0:
             print("Will properties field is NULL")
             return index + 1
         else:
-            #TODO
-            pass
+            will_prop = b''
+            will_prop_len = self.message[index]
+            for i in range(self.index,self.index + will_prop_len + 1):
+                will_prop += bytes([self.message[i]])
+
+            self.payload['will_prop_len'] = will_prop_len
+            self.payload['will_prop'] = will_prop
+
+            return index + will_prop_len + 1
 
     def read_var_field(self):
 
@@ -94,74 +111,83 @@ class CONNECT_packet(Fixed_header):
             print("Properties field is NULL")
             return index + 1
         else :
-            self.prop_len = self.message[index]
-            for i in range(index + 1,index + self.prop_len):
-                self.properties += bytes([self.message[i]])
-            self.__extract_property()
-            return index + self.prop_len + 1
+            properties = b''
+            prop_len = self.message[index]
+            for i in range(index + 1,index + prop_len + 1):
+                properties += bytes([self.message[i]])
+            self.variable_header['prop_len'] = prop_len
+            self.variable_header['properties'] = properties
+            self.__extract_property(properties)
+            return index + prop_len + 1
 
-    def __extract_property(self):
+    def __extract_property(self,properties):
         cnt = 0
         idx = 0
-        for id in self.properties:
+        for id in properties:
             idx += 1
             if id == SESSION_EXPIRY_INTERVAL:
-                self.expiry_interval = int.from_bytes(self.properties[idx:idx + 4], "big",
-                                                      signed=False)
-                print(f'expiry : {self.expiry_interval}')
-            elif id == RECEIVE_MAXIMUM:
-                self.recv_max = int.from_bytes(self.properties[idx:idx + 2], "big",
-                                                      signed=False)
-                print(f'recv max : {self.recv_max}')
-            elif id == MAXIMUM_PACKET_SIZE:
-                self.max_pack_size = int.from_bytes(self.properties[idx:idx + 4], "big",
-                                               signed=False)
-                print(f'max pack size : {self.max_pack_size}')
-            elif id == TOPIC_ALIAS_MAXIMUM:
-                self.topic_alias = int.from_bytes(self.properties[idx:idx + 2], "big",
+                expiry_interval = int.from_bytes(properties[idx:idx + 4], "big",
                                                     signed=False)
-                print(f'topic alias : {self.topic_alias}')
+                self.variable_header['expiry_interval'] = expiry_interval
+            elif id == RECEIVE_MAXIMUM:
+                recv_max = int.from_bytes(properties[idx:idx + 2], "big",
+                                                    signed=False)
+                self.variable_header['recv_max'] = recv_max
+            elif id == MAXIMUM_PACKET_SIZE:
+                max_pack_size = int.from_bytes(properties[idx:idx + 4], "big",
+                                                    signed=False)
+                self.variable_header['max_pack_size'] = max_pack_size
+            elif id == TOPIC_ALIAS_MAXIMUM:
+                topic_alias = int.from_bytes(properties[idx:idx + 2], "big",
+                                                    signed=False)
+                self.variable_header['topic_alias'] = topic_alias
             elif id == REQUEST_RESPONSE_INFORMATION:
-                self.request_response = self.properties[idx]
-                print(f'request response : {self.request_response}')
+                request_response = properties[idx]
+                self.variable_header['request_response'] = request_response
             elif id == REQUEST_PROBLEM_INFORMATION:
-                self.max_pack_size = self.properties[idx]
-                print(f'request problem : {self.max_pack_size}')
+                max_pack_size = properties[idx]
+                self.variable_header['max_pack_size'] = max_pack_size
             elif id == USER_PROPERTY:
-                key, val = self.__get_user(idx)
+                key, val = self.__get_user_field(idx,properties)
                 self.user_property[key] = val
                 pass
 
-    def __get_user(self,idx):
-        key_len = int.from_bytes(self.properties[idx:idx + 2], "big", signed=False)
-        key = self.properties[idx + 2:idx + key_len + 2].decode('utf-8')
-        val_len = int.from_bytes(self.properties[idx + key_len + 2:idx + key_len + 4], "big", signed=False)
-        val = 20 #TODO
+    def __get_user_field(self,idx,properties):
+        key_len = int.from_bytes(properties[idx:idx + 2], "big", signed=False)
+        key = properties[idx + 2:idx + key_len + 2].decode('utf-8')
+        val_len = int.from_bytes(properties[idx + key_len + 2:idx + key_len + 4], "big", signed=False)
+        val = properties[idx + key_len + 4:idx + key_len + val_len + 4].decode('utf-8')
         return key, val
 
     def __get_name(self, index):
-        self.name_len = int.from_bytes(self.message[index:index + 2], "big", signed=False)
+        name = b''
+        name_len = int.from_bytes(self.message[index:index + 2], "big", signed=False)
         index += 2
-        for i in range(index, index + self.name_len):
-            self.name += bytes([self.message[i]])
-        index += self.name_len
-        self.version = self.message[index]
+        for i in range(index, index + name_len):
+            name += bytes([self.message[i]])
+        index += name_len
+        version = self.message[index]
+
+        self.variable_header['name_len'] = name_len
+        self.variable_header['name'] = name
+        self.variable_header['version'] = version
+
         return index + 1
 
     def __get_keep_alive(self,index):
-        self.keep_alive = int.from_bytes(self.message[index:index + 2], "big", signed=False)
+        keep_alive = int.from_bytes(self.message[index:index + 2], "big", signed=False)
+        self.variable_header['keep_alive'] = keep_alive
         return index + 2
-
 
     def __get_flags(self, index):
         flags = self.message[index]
-        self.username_flag = (flags & 0b10000000) >> 7
-        self.password_flag = (flags & 0b01000000) >> 6
-        self.will_retain = (flags & 0b00100000) >> 5
-        self.qos_level = (flags & 0b00011000) >> 3
-        self.will_flag = (flags & 0b00000100) >> 2
-        self.clean_session = (flags & 0b00000010) >> 1
-        self.reserved = (flags & 0b00000001)
+        self.variable_header['username_flag'] = (flags & 0b10000000) >> 7
+        self.variable_header['password_flag'] = (flags & 0b01000000) >> 6
+        self.variable_header['will_retain'] = (flags & 0b00100000) >> 5
+        self.variable_header['qos_level'] = (flags & 0b00011000) >> 3
+        self.variable_header['will_flag'] = (flags & 0b00000100) >> 2
+        self.variable_header['clean_session'] = (flags & 0b00000010) >> 1
+        self.variable_header['reserved'] = (flags & 0b00000001)
         return index + 1
 
     def get_len_field(self,index):
@@ -172,33 +198,34 @@ class CONNECT_packet(Fixed_header):
         print(f'Message = {self.message}\n'
               f'Type = {self.pack_type}\n'
               f'Message length = {self.remaining_len}\n'
-              f'Protocol name length = {self.name_len}\n'
-              f'Protocol name = {self.name}\n'
-              f'Protocol version = {self.version}\n')
+              f'Protocol name length = {self.variable_header["name_len"]}\n'
+              f'Protocol name = {self.variable_header["name"]}\n'
+              f'Protocol version = {self.variable_header["version"]}\n'
+              )
 
         print("Protocol flags : ")
         self.print_flags()
 
-        print(f'Keep alive  = {self.keep_alive}\n'
-              f'Id length = {self.id_len}\n'
-              f'Id = {self.id}\n'
-              f'Will topic length = {self.will_topic_len}\n'
-              f'Will topic = {self.will_topic}\n'
-              f'Will message length = {self.will_message_len}\n'
-              f'Will message = {self.will_message}\n'
-              f'Username length = {self.username_len}\n'
-              f'Username = {self.username}\n'
-              f'Password length = {self.password_len}\n'
-              f'Password = {self.password}\n')
+        print(f'Keep alive  = {self.variable_header["keep_alive"]}\n'
+              f'Id length = {self.payload["id_len"]}\n'
+              f'Id = {self.payload["id"]}\n'
+              f'Will topic length = {self.payload["will_topic_len"]}\n'
+              f'Will topic = {self.payload["will_topic"]}\n'
+              f'Will message length = {self.payload["will_message_len"]}\n'
+              f'Will message = {self.payload["will_message"]}\n'
+              f'Username length = {self.payload["username_len"]}\n'
+              f'Username = {self.payload["username"]}\n'
+              f'Password length = {self.payload["password_len"]}\n'
+              f'Password = {self.payload["password"]}\n')
 
     def print_flags(self):
-        print(f'Username flag = {self.username_flag}\n'
-              f'Password flag = {self.password_flag}\n'
-              f'Will retain = {self.will_retain}\n'
-              f'QoS level = {self.qos_level}\n'
-              f'Will flag = {self.will_flag}\n'
-              f'Clean Session = {self.clean_session}\n'
-              f'Reserved = {self.reserved}\n')
+        print(f'Username flag = {self.variable_header["username_flag"]}\n'
+              f'Password flag = {self.variable_header["password_flag"]}\n'
+              f'Will retain = {self.variable_header["will_retain"]}\n'
+              f'QoS level = {self.variable_header["qos_level"]}\n'
+              f'Will flag = {self.variable_header["will_flag"]}\n'
+              f'Clean Session = {self.variable_header["clean_session"]}\n'
+              f'Reserved = {self.variable_header["reserved"]}\n')
 
 
 
