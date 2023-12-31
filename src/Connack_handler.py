@@ -1,6 +1,6 @@
 from Fixed_header import *
 
-class CONNACK_builder():
+class CONNACK_builder(Fixed_header):
     def __init__(self, data):
         self.data = data
         self.index = None
