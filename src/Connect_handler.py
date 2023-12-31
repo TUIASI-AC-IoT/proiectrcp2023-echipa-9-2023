@@ -121,7 +121,6 @@ class CONNECT_packet(Fixed_header):
             return index + prop_len + 1
 
     def __extract_property(self,properties):
-        cnt = 0
         idx = 0
         for id in properties:
             idx += 1
@@ -148,9 +147,8 @@ class CONNECT_packet(Fixed_header):
                 max_pack_size = properties[idx]
                 self.variable_header['max_pack_size'] = max_pack_size
             elif id == USER_PROPERTY:
-                key, val = self.__get_user_field(idx,properties)
+                key, val = self.__get_user_field(idx, properties)
                 self.user_property[key] = val
-                pass
 
     def __get_user_field(self,idx,properties):
         key_len = int.from_bytes(properties[idx:idx + 2], "big", signed=False)

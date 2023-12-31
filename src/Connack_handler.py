@@ -50,6 +50,6 @@ class CONNACK_builder():
         self.properties = 0x00
 
         packet = bytearray([self.pack_type, 0x03, self.session_present, self.reason_code, self.properties])
-        return bytes(packet)
+        return packet
 
 

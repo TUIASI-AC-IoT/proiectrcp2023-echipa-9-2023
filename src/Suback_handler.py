@@ -1,4 +1,4 @@
-from Fixed_header import *
+from defines import *
 
 class SUBACK_builder():
     def __init__(self, data):
@@ -21,8 +21,7 @@ class SUBACK_builder():
             elif topic['qos'] == 2:
                 self.payload += bytes([0x02])
 
-        print(self.pack_type,0x03,self.packet_id,self.properties,self.payload)
         packet = b''.join([self.pack_type, bytes([0x04]), self.packet_id, self.properties, self.payload])
-        return bytes(packet)
+        return packet
 
 
