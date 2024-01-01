@@ -11,7 +11,7 @@ class PUBLISH_packet(Fixed_header):
             self.variable_header = {
                 'topic_len': None,
                 'topic_name': b'',
-                'packet_id': 0,
+                'pack_id': 0,
                 'properties': b'',
                 'payload_format': None,
                 'expiry_interval': None,
@@ -59,9 +59,9 @@ class PUBLISH_packet(Fixed_header):
             self.variable_header['topic_name'] = name
             self.index += len
             if self.qos_level == 0:
-                self.variable_header['packet_id'] = None
+                self.variable_header['pack_id'] = None
             elif self.qos_level == 1 or self.qos_level == 2:
-                self.variable_header['packet_id'] = int.from_bytes(self.message[self.index:self.index + 2], 'big', signed = False)
+                self.variable_header['pack_id'] = int.from_bytes(self.message[self.index:self.index + 2], 'big', signed = False)
                 self.index += 2
             self.index = self.__get_properties(self.index)
 
@@ -132,26 +132,24 @@ class PUBLISH_builder(Fixed_header):
         self.properties = bytes([0x00])
         self.payload = b''
 
-    def build(self, dup):
+    def build(self, topic, message, qos, retain):
         self.pack_type = 0x3
         # dup = dup, valoare data ca parametru
         # daca dup = 0 pachetul a fost trimis pentru prima data
         # daca dup = 1 pachetul a mai fost trimis inainte
         dup = 0
-        qos = 0  # valoare luata din interfata grafica
-        retain = 1  # valoare luata din interfata grafica
         self.pack_flags = (self.pack_type << 4) + (dup << 3) + (qos << 1) + retain
         self.pack_flags = self.pack_flags.to_bytes(1,'big',signed=False)
-        self.topic = b'unteni'  # valoare luata din interfata grafica
+        self.topic = topic  # valoare luata din interfata grafica
         if qos == 0:
             self.pack_id = None
             msg_id_len = 0
         else:
             self.pack_id = random.randint(1, 65535)
             msg_id_len = 2
-        self.payload = b'ce faci dosica?'
+        self.payload = message
         self.topic_len = len(self.topic)
-        msg_len = 2 + self.topic_len + msg_id_len + len(self.payload)
+        msg_len = 2 + self.topic_len + msg_id_len + len(self.payload) + 1
         self.remaining_len = self.encode_variable_byte_integer(msg_len)
 
         if qos != 0:
