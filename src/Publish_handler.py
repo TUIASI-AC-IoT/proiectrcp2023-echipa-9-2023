@@ -10,7 +10,7 @@ class PUBLISH_packet(Fixed_header):
             self.retain_flag = None
             self.variable_header = {
                 'topic_len': None,
-                'topic_name': b'',
+                'topic': b'',
                 'pack_id': 0,
                 'properties': b'',
                 'payload_format': None,
@@ -56,7 +56,7 @@ class PUBLISH_packet(Fixed_header):
             self.index += 2
             for i in range(self.index, self.index + len):
                 name += bytes([self.message[i]])
-            self.variable_header['topic_name'] = name
+            self.variable_header['topic'] = name
             self.index += len
             if self.qos_level == 0:
                 self.variable_header['pack_id'] = None
@@ -133,7 +133,7 @@ class PUBLISH_builder(Fixed_header):
         self.payload = b''
 
     def build(self, topic, message, qos, retain):
-        self.pack_type = 0x3
+        self.pack_type = PUBLISH >> 4
         # dup = dup, valoare data ca parametru
         # daca dup = 0 pachetul a fost trimis pentru prima data
         # daca dup = 1 pachetul a mai fost trimis inainte
@@ -158,4 +158,4 @@ class PUBLISH_builder(Fixed_header):
         else:
             packet = b''.join([self.pack_flags, self.remaining_len, self.topic_len.to_bytes(2, 'big'), self.topic,
                                 bytes([0]), self.payload])
-        return packet
+        return self.pack_id, packet

@@ -1,6 +1,5 @@
 from Fixed_header import *
-
-class PUBACK_packet(Fixed_header):
+class PUBCOMP_packet(Fixed_header):
     def __init__(self, message):
         Fixed_header.__init__(self, message)
         self.variable_header = {
@@ -22,9 +21,8 @@ class PUBACK_packet(Fixed_header):
         if self.remaining_len > 4:
             self.variable_header['property_length'] = self.message[self.index]
             self.index += 1
-        print(self.variable_header)
 
-class PUBACK_builder(Fixed_header):
+class PUBCOMP_builder(Fixed_header):
     def __init__(self):
         Fixed_header.__init__(self)
         self.variable_header = {
@@ -34,7 +32,7 @@ class PUBACK_builder(Fixed_header):
         }
 
     def build(self, pack_id):
-        self.pack_type = bytes([PUBACK])
+        self.pack_type = bytes([PUBCOMP])
         self.remaining_len = bytes([0x03])
         self.variable_header['pack_id'] = pack_id.to_bytes(2, 'big')
         self.variable_header['reason_code'] = bytes([0x00])
