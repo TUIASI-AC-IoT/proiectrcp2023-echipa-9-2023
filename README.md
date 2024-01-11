@@ -9,4 +9,8 @@ and QOS0, 1, 2 mechanism
 
 The project does not include: Message Properties, Clients Auth, Persisten session and session state
 
+## Sequence Diagram
+
+![plot](main/sequence_diagram.png)
+
 
