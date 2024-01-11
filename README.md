@@ -1,1 +1,12 @@
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-718a45dd9cf7e7f842a935f5ebbe5719a5e09af4491e668f4dbf3b35d5cca122.svg)](https://classroom.github.com/online_ide?assignment_repo_id=12243866&assignment_repo_type=AssignmentRepo)
+# MQTTv5 BROKER
+
+This is our implementation of an basic MQTT broker
+
+## Features
+
+The implementation includes: All packets format excluding AUTH, Keep Alive, Last Will
+and QOS0, 1, 2 mechanism
+
+The project does not include: Message Properties, Clients Auth, Persisten session and session state
+
+
