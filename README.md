@@ -11,6 +11,6 @@ The project does not include: Message Properties, Clients Auth, Persisten sessio
 
 ## Sequence Diagram
 
-![plot](main/sequence_diagram.png)
+![plot](sequence_diagram.png)
 
 

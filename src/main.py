@@ -171,15 +171,30 @@ class MQTTBroker:
                 break
             if message[0] == CONNECT:
                 connect = CONNECT_packet(message)
-                sock_queue.put((client_socket, connect.payload['id']))
-                self.send_connack(client_socket, connect)
-                if connect.payload['id'] in self.clients:
-                    client_socket.close()
+                if self.authenticate(connect.payload['username'], connect.payload['password']):
+                    sock_queue.put((client_socket, connect.payload['id']))
+                    self.send_connack(client_socket, connect)
+                    if connect.payload['id'] in self.clients:
+                        client_socket.close()
+                    else:
+                        self.clients[connect.payload['id']] = {'subscriptions': []}
                 else:
-                    self.clients[connect.payload['id']] = {'subscriptions': []}
+                    self.send_connack_with_error(client_socket)
+                    break
             if len(self.clients):
                 self.handle_message(message, client_socket, connect)
         client_socket.close()
+
+    def authenticate(self, username, password):
+        valid_users = {
+            "user": "password",
+            "vlad": "vlad",
+            "octavian": "octavian"
+        }
+        if username in valid_users and valid_users[username] == password:
+            return True
+        else:
+            return False
 
     def send_pingresp(self, client_socket):
         pingresp_builder = PINGRESP_builder()
@@ -242,6 +257,10 @@ class MQTTBroker:
                 topic_found = True
         self.clients[id]['subscriptions'] = c_list
         return  topic_found
+
+    def send_connack_with_error(self, client_socket):
+        connack_error_packet = bytes([0x20, 0x02, 0x00, 0x05])
+        client_socket.send(connack_error_packet)
 
 if __name__ == '__main__':
     # Sending data betweend threads

@@ -70,19 +70,21 @@ class CONNECT_packet(Fixed_header):
                 self.payload['will_message_len'] = will_message_len
                 self.payload['will_mesage'] = will_message
 
-        username_len, self.index = self.get_len_field(self.index)
-        if username_len != 0:
-            username = self.message[self.index:self.index+username_len].decode('utf-8')
-            self.index += username_len
-            self.payload['username_len'] = username_len
-            self.payload['username'] = username
+        if self.variable_header['username_flag']:
+            username_len, self.index = self.get_len_field(self.index)
+            if username_len != 0:
+                username = self.message[self.index:self.index+username_len].decode('utf-8')
+                self.index += username_len
+                self.payload['username_len'] = username_len
+                self.payload['username'] = username
 
-        password_len, self.index = self.get_len_field(self.index)
-        if password_len != 0:
-            password = self.message[self.index:self.index + password_len].decode('utf-8')
-            self.index += password_len
-            self.payload['password_len'] = password_len
-            self.payload['password'] = password
+        if self.variable_header['password_flag']:
+            password_len, self.index = self.get_len_field(self.index)
+            if password_len != 0:
+                password = self.message[self.index:self.index + password_len].decode('utf-8')
+                self.index += password_len
+                self.payload['password_len'] = password_len
+                self.payload['password'] = password
 
     def read_will_properties(self,index):
         if self.message[index] == 0:
